@@ -1,0 +1,38 @@
+import secrets
+from ecdsa import SECP256k1
+
+# 생성할 무작위 테스트 케이스 개수
+NUM_TESTS = 5 
+
+def to_little_endian_c_array(val):
+    """256비트 정수를 64비트 리틀 엔디안 C 배열 문자열로 변환"""
+    c0 = (val >> 0) & 0xFFFFFFFFFFFFFFFF
+    c1 = (val >> 64) & 0xFFFFFFFFFFFFFFFF
+    c2 = (val >> 128) & 0xFFFFFFFFFFFFFFFF
+    c3 = (val >> 192) & 0xFFFFFFFFFFFFFFFF
+    return f"{{0x{c0:016X}ULL, 0x{c1:016X}ULL, 0x{c2:016X}ULL, 0x{c3:016X}ULL}}"
+
+print("    // ==========================================================")
+print(f"    // 파이썬 기반 무작위 자동 생성 테스트 벡터 ({NUM_TESTS}개)")
+print("    // ==========================================================")
+print("    TestVector tests[] = {")
+
+for i in range(NUM_TESTS):
+    # secp256k1 차수(order) 범위 내에서 완벽한 무작위 256비트 난수 생성
+    k = secrets.randbelow(SECP256k1.order - 1) + 1
+    
+    # 파이썬 ecdsa 라이브러리로 정답(타원 곡선 스칼라 곱) 계산
+    P = k * SECP256k1.generator
+    
+    # C 코드 배열 형태로 출력
+    print(f"        // Random Test {i+1}: k = {hex(k)}")
+    print(f"        {{{to_little_endian_c_array(k)},")
+    print(f"         {to_little_endian_c_array(P.x())},")
+    print(f"         {to_little_endian_c_array(P.y())}}}")
+    
+    # 마지막 원소가 아니면 쉼표 추가
+    if i < NUM_TESTS - 1:
+        print("        ,")
+
+print("    };")
+print(f"    int num_tests = {NUM_TESTS};")
